@@ -11,7 +11,7 @@ if (file_exists($envPath)) {
 
     foreach ($lines as $line) {
         if (strpos(trim($line), '#') === 0) continue;
-        if (!str_contains($line, '=')) continue;
+        if (strpos($line, '=') === false) continue;
 
         list($key, $value) = explode('=', $line, 2);
         $_ENV[trim($key)] = trim($value);
@@ -25,12 +25,32 @@ $ACCESS_CODE = $_ENV["ACCESS_CODE"] ?? "demo@2226";
 -------------------------- */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $entered = trim($_POST['access_code']);
+    $ip = $_SERVER['REMOTE_ADDR'];
+    $time = date("Y-m-d H:i:s");
 
     if ($entered === $ACCESS_CODE) {
+
+        // Log successful login
+        $logFile = __DIR__ . "/logs/access_log.txt";
+        file_put_contents(
+            $logFile,
+            "LOGIN SUCCESS | IP: $ip | TIME: $time\n",
+            FILE_APPEND
+        );
+
         $_SESSION['loggedin'] = true;
         header("Location: index.php");
         exit;
+
     } else {
+        // Log failed login
+        $logFile = __DIR__ . "/logs/access_log.txt";
+        file_put_contents(
+            $logFile,
+            "LOGIN FAIL | IP: $ip | TIME: $time | ENTERED: $entered\n",
+            FILE_APPEND
+        );
+
         $error = "Invalid access code!";
     }
 }

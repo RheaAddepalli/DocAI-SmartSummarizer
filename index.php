@@ -1,10 +1,26 @@
 <?php
 session_start();
 
+// ---------------------------------------
+// LOGIN CHECK
+// ---------------------------------------
 if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
     header("Location: login.php");
     exit;
 }
+
+// ---------------------------------------
+// RECORD PAGE ACCESS (ACTIVE USER LOG)
+// ---------------------------------------
+$visitFile = __DIR__ . "/logs/active_users.txt";
+$time = date("Y-m-d H:i:s");
+$ip = $_SERVER['REMOTE_ADDR'];
+
+file_put_contents(
+    $visitFile,
+    "VISIT | IP: $ip | TIME: $time\n",
+    FILE_APPEND
+);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -21,15 +37,11 @@ if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
             margin: 40px;
             background: linear-gradient(135deg, #e0f7fa, #f8f9fa);
         }
-
         h1 {
             color: #00695c;
             margin-bottom: 10px;
         }
-
-        input[type="file"],
-        select,
-        button {
+        input[type="file"], select, button {
             padding: 10px;
             margin: 10px;
             font-size: 16px;
@@ -37,7 +49,6 @@ if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
             border: 1px solid #ccc;
             outline: none;
         }
-
         button {
             background-color: #26a69a;
             color: white;
@@ -45,11 +56,9 @@ if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
             cursor: pointer;
             transition: 0.3s;
         }
-
         button:hover {
             background-color: #00796b;
         }
-
         #summaryOutput {
             margin-top: 30px;
             font-weight: bold;
@@ -63,19 +72,16 @@ if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
             margin-right: auto;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
-
         #loadingMessage {
             margin-top: 10px;
             font-weight: bold;
             color: #f57c00;
             display: none;
         }
-
         label {
             color: #00796b;
             font-weight: bold;
         }
-
         a.logout {
             position: absolute;
             top: 20px;
@@ -141,27 +147,20 @@ if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
                 method: "POST",
                 body: formData
             })
-                .then(response => response.json())
-                .then(data => {
-                    loading.style.display = "none";
+            .then(response => response.json())
+            .then(data => {
+                loading.style.display = "none";
 
-                    console.log("Response from PHP:", data);
-
-                    if (data.status === "success") {
-                        if (data.summary && data.summary.trim() !== "") {
-                            output.innerText = data.summary;
-                        } else {
-                            output.innerText = "⚠ Summary is empty — check debug_output.txt for details.";
-                        }
-                    } else {
-                        output.innerText = "❌ " + (data.message || "An error occurred.");
-                    }
-                })
-                .catch(error => {
-                    loading.style.display = "none";
-                    console.error("Error:", error);
-                    output.innerText = "Error uploading or summarizing file.";
-                });
+                if (data.status === "success") {
+                    output.innerText = data.summary;
+                } else {
+                    output.innerText = "❌ " + (data.message || "An error occurred.");
+                }
+            })
+            .catch(error => {
+                loading.style.display = "none";
+                output.innerText = "Error uploading or summarizing file.";
+            });
         }
     </script>
 
