@@ -2,12 +2,12 @@
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     if (isset($_FILES["file"])) {
-    $maxSize = 20 * 1024 * 1024; // 20 MB size limit
+    $maxSize = 10 * 1024 * 1024; // 10 MB size limit
 
     if ($_FILES["file"]["size"] > $maxSize) {
         echo json_encode([
             "status" => "error",
-            "message" => "❌ File too large. Maximum allowed size is 20 MB ."
+            "message" => "❌ File too large. Maximum allowed size is 10 MB ."
         ]);
         exit;
     }
