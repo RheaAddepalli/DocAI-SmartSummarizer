@@ -2,7 +2,7 @@
 session_start();
 
 /* -------------------------
-   LOAD ACCESS CODE FROM .env
+   LOAD ACCESS CODE FROM .env (LOCAL)
 -------------------------- */
 $envPath = __DIR__ . "/.env";
 
@@ -18,7 +18,22 @@ if (file_exists($envPath)) {
     }
 }
 
-$ACCESS_CODE = $_ENV["ACCESS_CODE"] ?? "demo@2226";
+/* -----------------------------------------
+   UPDATED ACCESS CODE LOADING (IMPORTANT)
+   - Railway → getenv("ACCESS_CODE")
+   - Local → .env
+   - No default fallback (secure)
+----------------------------------------- */
+$ACCESS_CODE = getenv("ACCESS_CODE");
+
+if (!$ACCESS_CODE) {
+    // fallback to local .env
+    $ACCESS_CODE = $_ENV["ACCESS_CODE"] ?? "";
+}
+
+if (!$ACCESS_CODE) {
+    die("❌ Server Error: ACCESS_CODE not configured.");
+}
 
 /* -------------------------
         CHECK CODE
