@@ -1,17 +1,16 @@
-<?php
+<?php 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     if (isset($_FILES["file"])) {
-    $maxSize = 10 * 1024 * 1024; // 10 MB size limit
+        $maxSize = 10 * 1024 * 1024; // 10 MB
 
-    if ($_FILES["file"]["size"] > $maxSize) {
-        echo json_encode([
-            "status" => "error",
-            "message" => "❌ File too large. Maximum allowed size is 10 MB ."
-        ]);
-        exit;
-    }
-
+        if ($_FILES["file"]["size"] > $maxSize) {
+            echo json_encode([
+                "status" => "error",
+                "message" => "❌ File too large. Maximum allowed size is 10 MB."
+            ]);
+            exit;
+        }
 
         $targetDir = __DIR__ . "/uploads/";
         $fileName = basename($_FILES["file"]["name"]);
@@ -33,7 +32,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             mkdir($targetDir, 0777, true);
         }
 
-        // Handle upload errors
+        // Upload errors
         if ($_FILES["file"]["error"] !== 0) {
             echo json_encode([
                 "status" => "error",
@@ -51,27 +50,32 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             exit;
         }
 
-        // Absolute paths for Python
-        $pythonExe = escapeshellarg(__DIR__ . "/venv_gai_new/Scripts/python.exe");
+        /* ------------------------------------------------------------
+           👇 RAILWAY FIX #1 — Linux uses /bin/python, NOT .exe
+        -------------------------------------------------------------*/
+        $pythonExe = escapeshellarg(__DIR__ . "/venv_gai_new/bin/python");
         $processScript = escapeshellarg(__DIR__ . "/process_pdf.py");
 
-        // Build command with UTF-8 support and pass prompt
-        $command = "chcp 65001 > nul && $pythonExe $processScript "
-                 . escapeshellarg($targetFilePath) . " give summary";
+        /* ------------------------------------------------------------
+           👇 RAILWAY FIX #2 — Remove Windows 'chcp', use simple command
+        -------------------------------------------------------------*/
+        $command = "$pythonExe $processScript "
+                 . escapeshellarg($targetFilePath)
+                 . " give summary 2>&1";
 
-        // Run Python and capture output
-        $output = shell_exec($command . " 2>&1");
+        // Run Python
+        $output = shell_exec($command);
 
-        // Log raw output for debugging
+        // Debug log
         file_put_contents(
             __DIR__ . "/debug_output.txt",
             "COMMAND: $command\n\nRAW OUTPUT:\n" . $output . "\n"
         );
 
-        // Remove BOM and whitespace
+        // Trim BOM
         $output = trim($output, "\xEF\xBB\xBF \n\r\t");
 
-        // Extract JSON part if warnings exist
+        // Extract JSON
         if (preg_match('/\{.*\}/s', $output, $matches)) {
             $json_part = $matches[0];
             $decoded = json_decode($json_part, true);
@@ -79,7 +83,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $decoded = json_decode($output, true);
         }
 
-        // Handle JSON errors
+        // JSON fail
         if (json_last_error() !== JSON_ERROR_NONE) {
             echo json_encode([
                 "status" => "error",
@@ -89,7 +93,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             exit;
         }
 
-        // Handle empty summary
+        // empty summary
         if (!isset($decoded["summary"]) || trim($decoded["summary"]) === "") {
             echo json_encode([
                 "status" => "error",
@@ -99,29 +103,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             exit;
         }
 
-       
-    // DELETE PDF + CACHED SUMMARY if user selected "no"
+        /* ------------------------------------------------------------
+           DELETE PDF + CACHED SUMMARY IF saveChoice = "no"
+        -------------------------------------------------------------*/
+        $pdfHash = md5_file($targetFilePath);
+        $cacheFile = __DIR__ . "/saved_summaries/$pdfHash.json";
 
-    // STEP 1: compute PDF hash BEFORE deleting anything
-    $pdfHash = md5_file($targetFilePath);
-    $cacheFile = __DIR__ . "/saved_summaries/$pdfHash.json";
-
-    if ($saveChoice === "no") {
-
-        // STEP 2: delete the uploaded PDF
-        if (file_exists($targetFilePath)) {
-            unlink($targetFilePath);
+        if ($saveChoice === "no") {
+            if (file_exists($targetFilePath)) unlink($targetFilePath);
+            if (file_exists($cacheFile)) unlink($cacheFile);
         }
 
-    // STEP 3: delete the saved summary for privacy
-        if (file_exists($cacheFile)) {
-            unlink($cacheFile);
-        }
-    }
-
-      
-
-        // Return JSON response
+        // Response
         echo json_encode([
             "status" => "success",
             "filename" => $fileName,
