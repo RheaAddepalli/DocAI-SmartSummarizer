@@ -1,22 +1,26 @@
-FROM debian:latest
+# Use Ubuntu for compatibility
+FROM ubuntu:22.04
 
-# --- Install PHP ---
-RUN apt-get update && \
-    apt-get install -y php php-cli php-mbstring php-xml php-curl php-zip php-gd php-json php-common && \
-    apt-get install -y python3 python3-pip && \
-    apt-get clean
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    python3 python3-pip python3-dev \
+    php php-cli php-mbstring php-zip php-xml php-curl \
+    tesseract-ocr libtesseract-dev \
+    mupdf-tools \
+    libjpeg-dev zlib1g-dev libpng-dev libfreetype6-dev \
+    && apt-get clean
 
-# --- Set working directory ---
+# Set working directory
 WORKDIR /app
 
-# --- Copy all project files ---
-COPY . /app
+# Copy project files
+COPY . .
 
-# --- Install Python dependencies ---
-RUN pip3 install -r requirements.txt
+# Install Python dependencies
+RUN pip3 install --no-cache-dir -r requirements.txt
 
-# --- Expose port ---
+# Expose port
 EXPOSE 8080
 
-# --- Start PHP server ---
+# Start PHP server
 CMD ["php", "-S", "0.0.0.0:8080"]
