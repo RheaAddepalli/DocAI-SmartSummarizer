@@ -53,7 +53,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         /* ------------------------------------------------------------
            👇 RAILWAY FIX #1 — Linux uses /bin/python, NOT .exe
         -------------------------------------------------------------*/
-        $pythonExe = escapeshellarg(__DIR__ . "/venv_gai_new/bin/python");
+       // $pythonExe = escapeshellarg(__DIR__ . "/venv_gai_new/bin/python"); this is for local setup but on railway venv need to be changed accaording to railway.toml so we change it as below
+        $pythonExe = escapeshellarg(__DIR__ . "/venv/bin/python");
+
         $processScript = escapeshellarg(__DIR__ . "/process_pdf.py");
 
         /* ------------------------------------------------------------
