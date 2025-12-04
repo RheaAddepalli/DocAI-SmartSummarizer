@@ -1,5 +1,7 @@
 <?php 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    file_put_contents(__DIR__."/railway_test.txt", "PHP can write files!\n", FILE_APPEND);
+
 
     if (isset($_FILES["file"])) {
 
@@ -52,9 +54,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
 
         /* ------------------------------------------------------------
-           RAILWAY FIX — use system python, not a venv
+           UNIVERSAL PYTHON DETECTION (Local Windows + Railway Linux)
         -------------------------------------------------------------*/
-        $pythonExe = "python3";  // <---- ONLY CHANGE MADE
+        $pythonExe = "python3"; // Railway
+
+        if (stripos(PHP_OS, "WIN") !== false) {
+            $pythonExe = __DIR__ . "/venv_gai_new/Scripts/python.exe";
+        }
+
+        $pythonExe = escapeshellarg($pythonExe);
 
         $processScript = escapeshellarg(__DIR__ . "/process_pdf.py");
 
