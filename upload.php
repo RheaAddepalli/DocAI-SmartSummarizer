@@ -2,6 +2,7 @@
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     if (isset($_FILES["file"])) {
+
         $maxSize = 10 * 1024 * 1024; // 10 MB
 
         if ($_FILES["file"]["size"] > $maxSize) {
@@ -51,16 +52,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
 
         /* ------------------------------------------------------------
-           👇 RAILWAY FIX #1 — Linux uses /bin/python, NOT .exe
+           RAILWAY FIX — use system python, not a venv
         -------------------------------------------------------------*/
-       // $pythonExe = escapeshellarg(__DIR__ . "/venv_gai_new/bin/python"); this is for local setup but on railway venv need to be changed accaording to railway.toml so we change it as below
-        $pythonExe = escapeshellarg(__DIR__ . "/venv/bin/python");
+        $pythonExe = "python3";  // <---- ONLY CHANGE MADE
 
         $processScript = escapeshellarg(__DIR__ . "/process_pdf.py");
 
-        /* ------------------------------------------------------------
-           👇 RAILWAY FIX #2 — Remove Windows 'chcp', use simple command
-        -------------------------------------------------------------*/
         $command = "$pythonExe $processScript "
                  . escapeshellarg($targetFilePath)
                  . " give summary 2>&1";
