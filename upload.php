@@ -1,27 +1,36 @@
 <?php 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    file_put_contents(__DIR__."/railway_test.txt", "PHP can write files!\n", FILE_APPEND);
-
 
     if (isset($_FILES["file"])) {
 
-        $maxSize = 10 * 1024 * 1024; // 10 MB
+        $maxSize = 10 * 1024 * 1024; // 10 MB limit
 
         if ($_FILES["file"]["size"] > $maxSize) {
             echo json_encode([
                 "status" => "error",
-                "message" => "❌ File too large. Maximum allowed size is 10 MB."
+                "message" => "❌ File too large. Max allowed is 10 MB."
             ]);
             exit;
         }
 
-        $targetDir = __DIR__ . "/uploads/";
+        // ----------- IMPORTANT: Railway-safe writable folders -----------
+        $baseTmp = "/tmp"; 
+        $uploadDir = $baseTmp . "/uploads/";
+        $summaryDir = $baseTmp . "/saved_summaries/";
+        $logFile = $baseTmp . "/debug_output.txt";
+
+        // Create folders if missing
+        if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
+        if (!is_dir($summaryDir)) mkdir($summaryDir, 0777, true);
+
+        // ---------------------------------------------------------------
+
         $fileName = basename($_FILES["file"]["name"]);
-        $targetFilePath = $targetDir . $fileName;
+        $targetFilePath = $uploadDir . $fileName;
+
         $fileType = strtolower(pathinfo($targetFilePath, PATHINFO_EXTENSION));
         $saveChoice = $_POST["saveChoice"] ?? "yes";
 
-        // Allow only PDFs
         if ($fileType !== "pdf") {
             echo json_encode([
                 "status" => "error",
@@ -30,12 +39,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             exit;
         }
 
-        // Ensure upload folder exists
-        if (!is_dir($targetDir)) {
-            mkdir($targetDir, 0777, true);
-        }
-
-        // Upload errors
         if ($_FILES["file"]["error"] !== 0) {
             echo json_encode([
                 "status" => "error",
@@ -44,38 +47,26 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             exit;
         }
 
-        // Move uploaded file
+        // Move file to /tmp/uploads
         if (!move_uploaded_file($_FILES["file"]["tmp_name"], $targetFilePath)) {
             echo json_encode([
                 "status" => "error",
-                "message" => "Failed to move uploaded file."
+                "message" => "Failed to upload file."
             ]);
             exit;
         }
 
-        /* ------------------------------------------------------------
-           UNIVERSAL PYTHON DETECTION (Local Windows + Railway Linux)
-        -------------------------------------------------------------*/
-        $pythonExe = "python3"; // Railway
-
-        if (stripos(PHP_OS, "WIN") !== false) {
-            $pythonExe = __DIR__ . "/venv_gai_new/Scripts/python.exe";
-        }
-
-        $pythonExe = escapeshellarg($pythonExe);
-
+        // ------------------ RUN PYTHON (system python3) -----------------
+        $pythonExe = "python3";
         $processScript = escapeshellarg(__DIR__ . "/process_pdf.py");
 
-        $command = "$pythonExe $processScript "
-                 . escapeshellarg($targetFilePath)
-                 . " give summary 2>&1";
+        $command = "$pythonExe $processScript " . escapeshellarg($targetFilePath) . " 'give summary' 2>&1";
 
-        // Run Python
         $output = shell_exec($command);
 
-        // Debug log
+        // Log raw output to /tmp/debug_output.txt
         file_put_contents(
-            __DIR__ . "/debug_output.txt",
+            $logFile,
             "COMMAND: $command\n\nRAW OUTPUT:\n" . $output . "\n"
         );
 
@@ -90,7 +81,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $decoded = json_decode($output, true);
         }
 
-        // JSON fail
         if (json_last_error() !== JSON_ERROR_NONE) {
             echo json_encode([
                 "status" => "error",
@@ -100,28 +90,25 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             exit;
         }
 
-        // empty summary
         if (!isset($decoded["summary"]) || trim($decoded["summary"]) === "") {
             echo json_encode([
                 "status" => "error",
-                "message" => "⚠ Summary is empty — check debug_output.txt for details.",
+                "message" => "⚠ Summary is empty — check debug_output.txt",
                 "raw_output" => $output
             ]);
             exit;
         }
 
-        /* ------------------------------------------------------------
-           DELETE PDF + CACHED SUMMARY IF saveChoice = "no"
-        -------------------------------------------------------------*/
+        // ---------------- DELETE IF NOT SAVING -------------------------
         $pdfHash = md5_file($targetFilePath);
-        $cacheFile = __DIR__ . "/saved_summaries/$pdfHash.json";
+        $cacheFile = $summaryDir . "$pdfHash.json";
 
         if ($saveChoice === "no") {
             if (file_exists($targetFilePath)) unlink($targetFilePath);
             if (file_exists($cacheFile)) unlink($cacheFile);
         }
 
-        // Response
+        // Return success
         echo json_encode([
             "status" => "success",
             "filename" => $fileName,
@@ -129,13 +116,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             "cached" => $decoded["cached"] ?? false,
             "saved" => $saveChoice
         ]);
-
-    } else {
-        echo json_encode([
-            "status" => "error",
-            "message" => "No file uploaded."
-        ]);
+        exit;
     }
+
+    echo json_encode([
+        "status" => "error",
+        "message" => "No file uploaded."
+    ]);
+    exit;
 
 } else {
     echo json_encode([
