@@ -1,26 +1,40 @@
-# Use Ubuntu for compatibility
+# ----------------------------------------------------
+# Base Ubuntu image
+# ----------------------------------------------------
 FROM ubuntu:22.04
 
+# Prevent interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+
+# ----------------------------------------------------
 # Install system dependencies
+# ----------------------------------------------------
 RUN apt-get update && apt-get install -y \
-    python3 python3-pip python3-dev \
-    php php-cli php-mbstring php-zip php-xml php-curl \
-    tesseract-ocr libtesseract-dev \
-    mupdf-tools \
-    libjpeg-dev zlib1g-dev libpng-dev libfreetype6-dev \
+    python3 python3-pip \
+    php php-cli php-mbstring php-xml php-curl \
+    nginx \
+    tesseract-ocr \
+    libgl1 libglib2.0-0 \
+    poppler-utils \
     && apt-get clean
 
-# Set working directory
+# ----------------------------------------------------
+# Copy application files
+# ----------------------------------------------------
 WORKDIR /app
-
-# Copy project files
 COPY . .
 
+# ----------------------------------------------------
 # Install Python dependencies
+# ----------------------------------------------------
 RUN pip3 install --no-cache-dir -r requirements.txt
 
-# Expose port
+# ----------------------------------------------------
+# Expose application port for Railway
+# ----------------------------------------------------
 EXPOSE 8080
 
-# Start PHP server
-CMD ["php", "-S", "0.0.0.0:8080"]
+# ----------------------------------------------------
+# Start PHP server (Railway uses port env var)
+# ----------------------------------------------------
+CMD php -S 0.0.0.0:$PORT
